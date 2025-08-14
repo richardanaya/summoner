@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTMX AI Streamer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0a0a0a;
+            color: #e4e4e7;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-size: 14px;
+            line-height: 1.5;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        
+        .chat-input-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #111111;
+            border-top: 1px solid #27272a;
+            padding: 20px;
+            box-shadow: 0 -2px 20px rgba(0,0,0,0.3);
+        }
+        
+        .chat-input-form {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #3f3f46;
+            border-radius: 24px;
+            font-size: 16px;
+            resize: none;
+            min-height: 24px;
+            max-height: 120px;
+            box-sizing: border-box;
+            font-family: inherit;
+            line-height: 1.4;
+            background: #18181b;
+            color: #e4e4e7;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        button {
+            background: transparent;
+            color: inherit;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 12px 20px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        
+        button:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+        
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .clear-btn {
+            padding: 12px 16px;
+            margin-left: 8px;
+        }
+        
+        .stop-btn {
+            padding: 12px 16px;
+            margin-right: 8px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .system-prompt-btn {
+            padding: 12px 16px;
+            margin-left: 8px;
+            font-size: 12px;
+            color: #71717a;
+        }
+        
+        .endpoint-selector {
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        
+        .endpoint-selector label {
+            display: block;
+            margin-bottom: 6px;
+            color: #71717a;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        
+        .endpoint-selector select {
+            padding: 8px 12px;
+            border: 1px solid #3f3f46;
+            border-radius: 8px;
+            background: #18181b;
+            color: #e4e4e7;
+            font-size: 12px;
+            min-width: 150px;
+            font-family: inherit;
+        }
+        
+        
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 120px;
+            background: #0a0a0a;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+        
+        .user-message {
+            align-items: flex-end;
+        }
+        
+        .assistant-message {
+            align-items: flex-start;
+        }
+        
+        .message-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+        
+        .user-message .message-bubble {
+            background: #6366f1;
+            color: white;
+            border-bottom-right-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .assistant-message .message-bubble {
+            background: #18181b;
+            color: #e4e4e7;
+            border: 1px solid #27272a;
+            border-bottom-left-radius: 6px;
+            white-space: pre-wrap;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Mono', 'Cascadia Code', 'Roboto Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .message-label {
+            font-size: 11px;
+            color: #71717a;
+            margin-bottom: 6px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        
+        .user-message .message-label {
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        
+        .user-message .message-actions {
+            order: -1;
+            margin-left: 0;
+            margin-right: 10px;
+        }
+        
+        .assistant-message .message-label {
+            text-align: left;
+            display: flex;
+            align-items: center;
+        }
+        
+        .message-actions {
+            display: inline-block;
+            margin-left: 10px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+        
+        .message-actions a {
+            color: #71717a;
+            text-decoration: none;
+            font-size: 9px;
+            margin-left: 6px;
+            cursor: pointer;
+            transition: color 0.2s;
+            font-weight: 400;
+            opacity: 0.8;
+        }
+        
+        .message-actions a:hover {
+            color: #6366f1;
+            text-decoration: none;
+        }
+        
+        .message-actions a.delete:hover {
+            color: #ef4444;
+        }
+        
+        .message.focused .message-actions {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .message {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .message:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        
+        .message.focused {
+            background-color: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.1);
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status.connecting {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+        
+        .status.streaming {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        
+        .status.completed {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .chat-input-container {
+                padding: 15px 10px;
+            }
+            
+            .chat-input-form {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .input-wrapper {
+                order: 1;
+            }
+            
+            .chat-input-form button {
+                order: 2;
+                padding: 14px 20px;
+                font-size: 16px;
+                border-radius: 8px;
+                min-height: 48px;
+                touch-action: manipulation;
+            }
+            
+            .clear-btn {
+                margin-left: 0;
+                margin-top: 8px;
+            }
+            
+            .stop-btn {
+                margin-right: 0;
+                margin-bottom: 8px;
+            }
+            
+            .system-prompt-btn {
+                margin-left: 0;
+                margin-top: 8px;
+            }
+            
+            textarea {
+                font-size: 16px;
+                padding: 14px 16px;
+                border-radius: 12px;
+                min-height: 48px;
+            }
+            
+            .chat-container {
+                padding: 15px 10px;
+                padding-bottom: 180px;
+            }
+            
+            .message-bubble {
+                max-width: 90%;
+                font-size: 16px;
+                padding: 12px 16px;
+            }
+            
+            .message-label {
+                font-size: 11px;
+            }
+            
+            .message-actions a {
+                font-size: 9px;
+                padding: 3px 6px;
+                margin-left: 3px;
+            }
+            
+            .endpoint-selector select {
+                font-size: 16px;
+                padding: 8px 12px;
+                min-height: 44px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .chat-input-container {
+                padding: 12px 8px;
+            }
+            
+            .chat-container {
+                padding: 12px 8px;
+                padding-bottom: 200px;
+            }
+            
+            .message-bubble {
+                max-width: 95%;
+                padding: 10px 14px;
+            }
+            
+            .chat-input-form {
+                gap: 8px;
+            }
+            
+            .chat-input-form button {
+                padding: 12px 16px;
+                font-size: 15px;
+            }
+            
+            textarea {
+                padding: 12px 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <div id="chat-container" class="chat-container">
+            <div id="messages"></div>
+            <div id="status" class="status hidden"></div>
+        </div>
+    </div>
+    
+    <div class="chat-input-container">
+        <div id="endpoint-selector" class="endpoint-selector hidden">
+            <label for="endpoint-select">Select AI Model:</label>
+            <select id="endpoint-select">
+                <!-- Options populated by JavaScript -->
+            </select>
+        </div>
+        <form id="prompt-form" class="chat-input-form">
+            <div class="input-wrapper">
+                <textarea 
+                    id="prompt" 
+                    name="prompt" 
+                    required
+                    rows="1"
+                    autocomplete="off"
+                    spellcheck="false"
+                    autocapitalize="off"
+                    autocorrect="off"
+                ></textarea>
+            </div>
+            <button type="button" id="stop-btn" class="stop-btn hidden">
+                ■
+            </button>
+            <button type="submit" id="submit-btn">
+                ↑
+            </button>
+            <button type="button" id="clear-btn" class="clear-btn">
+                ×
+            </button>
+            <button type="button" id="system-prompt-btn" class="system-prompt-btn">
+                Set System Prompt
+            </button>
+        </form>
+    </div>
+    
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('prompt-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const systemPromptBtn = document.getElementById('system-prompt-btn');
+            const endpointSelector = document.getElementById('endpoint-selector');
+            const endpointSelect = document.getElementById('endpoint-select');
+            const statusDiv = document.getElementById('status');
+            const messagesDiv = document.getElementById('messages');
+            const promptTextarea = document.getElementById('prompt');
+            let currentAssistantMessage = null;
+            let abortController = null;
+            let conversationHistory = []; // Array of {role: 'user'|'assistant'|'system', content: 'text'}
+            let availableEndpoints = [];
+            let selectedEndpoint = null;
+
+            // Auto-resize textarea
+            promptTextarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+
+            // Submit on Enter (but not Shift+Enter)
+            promptTextarea.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    form.requestSubmit();
+                }
+            });
+
+            // Clear chat functionality
+            clearBtn.addEventListener('click', function() {
+                // Stop any ongoing generation first
+                if (abortController) {
+                    abortController.abort();
+                    hideStatus();
+                    resetForm();
+                }
+                
+                if (messagesDiv.innerHTML.trim() === '') {
+                    // No chat messages, clear system prompt instead
+                    conversationHistory = conversationHistory.filter(msg => msg.role !== 'system');
+                    updateSystemPromptButton();
+                } else {
+                    // Clear chat messages
+                    messagesDiv.innerHTML = '';
+                    conversationHistory = conversationHistory.filter(msg => msg.role === 'system');
+                    hideStatus();
+                }
+                updateClearButton();
+            });
+
+            // Stop generation functionality
+            stopBtn.addEventListener('click', function() {
+                if (abortController) {
+                    abortController.abort();
+                    hideStatus();
+                    // Add the current content to conversation history without stopped message
+                    if (currentAssistantMessage && currentAssistantMessage.textContent.trim()) {
+                        conversationHistory.push({ 
+                            role: 'assistant', 
+                            content: currentAssistantMessage.textContent.trim() 
+                        });
+                    }
+                    resetForm();
+                }
+            });
+
+            // System prompt functionality
+            systemPromptBtn.addEventListener('click', function() {
+                const inputContent = promptTextarea.value.trim();
+                if (inputContent) {
+                    // Remove any existing system message and add new one
+                    conversationHistory = conversationHistory.filter(msg => msg.role !== 'system');
+                    conversationHistory.unshift({ role: 'system', content: inputContent });
+                    promptTextarea.value = '';
+                    promptTextarea.style.height = 'auto';
+                    updateSystemPromptButton();
+                    updateClearButton();
+                }
+            });
+
+            function updateSystemPromptButton() {
+                const hasSystemPrompt = conversationHistory.some(msg => msg.role === 'system');
+                if (!hasSystemPrompt) {
+                    systemPromptBtn.classList.remove('hidden');
+                    systemPromptBtn.textContent = 'Set System Prompt';
+                } else {
+                    systemPromptBtn.classList.add('hidden');
+                }
+            }
+
+            function updateClearButton() {
+                const hasSystemPrompt = conversationHistory.some(msg => msg.role === 'system');
+                const hasChat = conversationHistory.some(msg => msg.role !== 'system');
+                
+                if (!hasChat) {
+                    // No chat content - show endpoint selector
+                    endpointSelector.classList.remove('hidden');
+                    if (!hasSystemPrompt) {
+                        // No system prompt either - hide clear button
+                        clearBtn.classList.add('hidden');
+                    } else {
+                        // Has system prompt but no chat - show "Clear System Prompt"
+                        clearBtn.classList.remove('hidden');
+                        clearBtn.textContent = '×';
+                    }
+                } else {
+                    // Has chat content - show "Clear" (clears chat) and hide endpoint selector
+                    clearBtn.classList.remove('hidden');
+                    clearBtn.textContent = '×';
+                    endpointSelector.classList.add('hidden');
+                }
+            }
+
+            // Message action handlers and focus functionality
+            messagesDiv.addEventListener('click', function(e) {
+                if (e.target.classList.contains('delete')) {
+                    const index = parseInt(e.target.dataset.index);
+                    deleteMessage(index);
+                } else if (e.target.classList.contains('regenerate')) {
+                    const index = parseInt(e.target.dataset.index);
+                    regenerateFromMessage(index);
+                } else if (e.target.classList.contains('set-system-prompt')) {
+                    const index = parseInt(e.target.dataset.index);
+                    setSystemPromptFromMessage(index);
+                } else {
+                    // Click on message itself to focus/unfocus
+                    const messageDiv = e.target.closest('.message');
+                    if (messageDiv) {
+                        // Remove focus from all other messages
+                        const allMessages = messagesDiv.querySelectorAll('.message');
+                        allMessages.forEach(msg => {
+                            if (msg !== messageDiv) {
+                                msg.classList.remove('focused');
+                            }
+                        });
+                        
+                        // Toggle focus on clicked message
+                        messageDiv.classList.toggle('focused');
+                    }
+                }
+            });
+            
+            // Click outside messages to unfocus all
+            document.addEventListener('click', function(e) {
+                if (!messagesDiv.contains(e.target)) {
+                    const allMessages = messagesDiv.querySelectorAll('.message');
+                    allMessages.forEach(msg => msg.classList.remove('focused'));
+                }
+            });
+
+            function setSystemPromptFromMessage(index) {
+                const message = conversationHistory[index];
+                if (message) {
+                    // Remove any existing system message and add new one
+                    conversationHistory = conversationHistory.filter(msg => msg.role !== 'system');
+                    conversationHistory.unshift({ role: 'system', content: message.content });
+                    
+                    // Rebuild UI to show system prompt is now set
+                    rebuildMessageUI();
+                    updateSystemPromptButton();
+                    updateClearButton();
+                }
+            }
+
+            function deleteMessage(index) {
+                // Remove from conversation history
+                conversationHistory.splice(index, 1);
+                
+                // Rebuild UI
+                rebuildMessageUI();
+                
+                updateClearButton();
+            }
+
+            function regenerateFromMessage(index) {
+                // Remove this message and all following messages
+                conversationHistory = conversationHistory.slice(0, index);
+                
+                // Rebuild UI
+                rebuildMessageUI();
+                
+                // If the last message is a user message, regenerate assistant response
+                const lastMessage = conversationHistory[conversationHistory.length - 1];
+                if (lastMessage && lastMessage.role === 'user') {
+                    // Trigger regeneration
+                    triggerRegeneration();
+                }
+                
+                updateClearButton();
+            }
+
+            function rebuildMessageUI() {
+                messagesDiv.innerHTML = '';
+                const hasSystemPrompt = conversationHistory.some(msg => msg.role === 'system');
+                
+                conversationHistory.forEach((message, index) => {
+                    if (message.role === 'user') {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = 'message user-message';
+                        const setSystemPromptLink = !hasSystemPrompt ? `<a class=\"set-system-prompt\" data-index=\"${index}\">set system prompt</a>` : '';
+                        messageDiv.innerHTML = `
+                            <div class=\"message-label\">
+                                <span class=\"message-actions\">
+                                    <a class=\"delete\" data-index=\"${index}\">delete</a>
+                                    <a class=\"regenerate\" data-index=\"${index}\">regenerate</a>
+                                    ${setSystemPromptLink}
+                                </span>
+                            </div>
+                            <div class=\"message-bubble\">${escapeHtml(message.content)}</div>
+                        `;
+                        messagesDiv.appendChild(messageDiv);
+                    } else if (message.role === 'assistant') {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = 'message assistant-message';
+                        const setSystemPromptLink = !hasSystemPrompt ? `<a class=\"set-system-prompt\" data-index=\"${index}\">set system prompt</a>` : '';
+                        messageDiv.innerHTML = `
+                            <div class=\"message-label\">
+                                <span class=\"message-actions\">
+                                    <a class=\"delete\" data-index=\"${index}\">delete</a>
+                                    <a class=\"regenerate\" data-index=\"${index}\">regenerate</a>
+                                    ${setSystemPromptLink}
+                                </span>
+                            </div>
+                            <div class=\"message-bubble\">${escapeHtml(message.content)}</div>
+                        `;
+                        messagesDiv.appendChild(messageDiv);
+                    }
+                });
+                
+                scrollToBottom();
+            }
+
+            async function triggerRegeneration() {
+                // Disable form and show generating state
+                submitBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+                
+                // Create assistant message placeholder
+                currentAssistantMessage = addAssistantMessage('');
+
+                // Create abort controller for this request
+                abortController = new AbortController();
+
+                try {
+                    const response = await fetch('/api/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            messages: conversationHistory,
+                            endpoint: selectedEndpoint
+                        }),
+                        signal: abortController.signal
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    updateStatus('streaming', 'Streaming response...');
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('event: ')) {
+                                const eventType = line.slice(7);
+                                continue;
+                            }
+                            
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                
+                                if (data === 'Stream completed') {
+                                    // Add complete assistant message to conversation history
+                                    if (currentAssistantMessage && currentAssistantMessage.textContent.trim()) {
+                                        conversationHistory.push({ 
+                                            role: 'assistant', 
+                                            content: currentAssistantMessage.textContent.trim() 
+                                        });
+                                    }
+                                    hideStatus();
+                                    resetForm();
+                                    scrollToBottom();
+                                    continue;
+                                }
+                                
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    if (parsed.content) {
+                                        appendToAssistantMessage(parsed.content);
+                                        scrollToBottom();
+                                    }
+                                    if (parsed.error) {
+                                        updateStatus('error', `Error: ${parsed.error}`);
+                                        resetForm();
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing data:', e);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('Request was aborted');
+                        // Don't show error for intentional abort
+                    } else {
+                        console.error('Stream error:', error);
+                        updateStatus('error', `Connection error: ${error.message}`);
+                        resetForm();
+                    }
+                }
+            }
+
+            // Load available endpoints
+            async function loadEndpoints() {
+                try {
+                    const response = await fetch('/api/endpoints');
+                    const data = await response.json();
+                    availableEndpoints = data.endpoints;
+                    selectedEndpoint = availableEndpoints[0]; // Default to first
+                    
+                    // Populate dropdown
+                    endpointSelect.innerHTML = '';
+                    availableEndpoints.forEach((endpoint, index) => {
+                        const option = document.createElement('option');
+                        option.value = endpoint;
+                        option.textContent = endpoint;
+                        if (index === 0) option.selected = true;
+                        endpointSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Failed to load endpoints:', error);
+                }
+            }
+
+            // Update selected endpoint when dropdown changes
+            endpointSelect.addEventListener('change', function() {
+                selectedEndpoint = this.value;
+            });
+
+            // Initialize
+            loadEndpoints();
+            updateSystemPromptButton();
+            updateClearButton();
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Prevent submission if already streaming
+                if (abortController) {
+                    return;
+                }
+                
+                const promptTextarea = document.getElementById('prompt');
+                const prompt = promptTextarea.value.trim();
+                
+                if (!prompt) return;
+
+                // Add user message to chat and conversation history
+                addUserMessage(prompt);
+                conversationHistory.push({ role: 'user', content: prompt });
+                updateClearButton(); // Update UI now that we have chat messages
+                
+                // Clear input and disable form
+                promptTextarea.value = '';
+                promptTextarea.style.height = 'auto';
+                submitBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+                
+                // Create assistant message placeholder
+                currentAssistantMessage = addAssistantMessage('');
+
+                // Create abort controller for this request
+                abortController = new AbortController();
+
+                try {
+                    const response = await fetch('/api/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            messages: conversationHistory,
+                            endpoint: selectedEndpoint
+                        }),
+                        signal: abortController.signal
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    updateStatus('streaming', 'Streaming response...');
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        
+                        if (done) break;
+
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('event: ')) {
+                                const eventType = line.slice(7);
+                                continue;
+                            }
+                            
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                
+                                if (data === 'Stream completed') {
+                                    // Add complete assistant message to conversation history
+                                    if (currentAssistantMessage && currentAssistantMessage.textContent.trim()) {
+                                        conversationHistory.push({ 
+                                            role: 'assistant', 
+                                            content: currentAssistantMessage.textContent.trim() 
+                                        });
+                                    }
+                                    hideStatus();
+                                    resetForm();
+                                    scrollToBottom();
+                                    continue;
+                                }
+                                
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    if (parsed.content) {
+                                        appendToAssistantMessage(parsed.content);
+                                        scrollToBottom();
+                                    }
+                                    if (parsed.error) {
+                                        updateStatus('error', `Error: ${parsed.error}`);
+                                        resetForm();
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing data:', e);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('Request was aborted');
+                        // Don't show error for intentional abort
+                    } else {
+                        console.error('Stream error:', error);
+                        updateStatus('error', `Connection error: ${error.message}`);
+                        resetForm();
+                    }
+                }
+            });
+
+            function addUserMessage(text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message user-message';
+                const messageIndex = conversationHistory.length; // Will be the index after it's added
+                const hasSystemPrompt = conversationHistory.some(msg => msg.role === 'system');
+                const setSystemPromptLink = !hasSystemPrompt ? `<a class="set-system-prompt" data-index="${messageIndex}">set system prompt</a>` : '';
+                messageDiv.innerHTML = `
+                    <div class="message-label">
+                        <span class="message-actions">
+                            <a class="delete" data-index="${messageIndex}">delete</a>
+                            <a class="regenerate" data-index="${messageIndex}">regenerate</a>
+                            ${setSystemPromptLink}
+                        </span>
+                    </div>
+                    <div class="message-bubble">${escapeHtml(text)}</div>
+                `;
+                messagesDiv.appendChild(messageDiv);
+                scrollToBottom();
+                updateClearButton();
+            }
+
+            function addAssistantMessage(text) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message assistant-message';
+                const messageIndex = conversationHistory.length; // Will be the index after it's added
+                const hasSystemPrompt = conversationHistory.some(msg => msg.role === 'system');
+                const setSystemPromptLink = !hasSystemPrompt ? `<a class="set-system-prompt" data-index="${messageIndex}">set system prompt</a>` : '';
+                messageDiv.innerHTML = `
+                    <div class="message-label">
+                        <span class="message-actions">
+                            <a class="delete" data-index="${messageIndex}">delete</a>
+                            <a class="regenerate" data-index="${messageIndex}">regenerate</a>
+                            ${setSystemPromptLink}
+                        </span>
+                    </div>
+                    <div class="message-bubble">${escapeHtml(text)}</div>
+                `;
+                messagesDiv.appendChild(messageDiv);
+                scrollToBottom();
+                return messageDiv.querySelector('.message-bubble');
+            }
+
+            function appendToAssistantMessage(text) {
+                if (currentAssistantMessage) {
+                    currentAssistantMessage.textContent += text;
+                }
+            }
+
+            function updateStatus(type, message) {
+                statusDiv.className = `status ${type}`;
+                statusDiv.textContent = message;
+                statusDiv.classList.remove('hidden');
+            }
+
+            function hideStatus() {
+                statusDiv.classList.add('hidden');
+            }
+
+            function resetForm() {
+                submitBtn.classList.remove('hidden');
+                stopBtn.classList.add('hidden');
+                currentAssistantMessage = null;
+                abortController = null;
+            }
+
+            function scrollToBottom() {
+                const chatContainer = document.getElementById('chat-container');
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        });
+    </script>
+</body>
+</html>
