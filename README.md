@@ -5,7 +5,7 @@ A real-time streaming interface for llama.cpp server using HTMX SSE extensions a
 ## Prerequisites
 
 - Node.js (v18+)
-- A running llama.cpp server on `http://127.0.0.1:9090`
+- A running llama.cpp server (default: `http://127.0.0.1:9090`)
 
 ## Setup
 
@@ -14,12 +14,58 @@ A real-time streaming interface for llama.cpp server using HTMX SSE extensions a
 npm install
 ```
 
-2. Start the development server:
+2. Build the project (for production):
+```bash
+npm run build
+```
+
+3. Start the server:
+
+**Development mode (with auto-reload):**
 ```bash
 npm run dev
 ```
 
-3. Open your browser to `http://localhost:3000`
+**Production mode:**
+```bash
+npm start
+```
+
+4. Open your browser to `https://localhost:3000`
+
+## Configuration Options
+
+### Environment Variables
+
+- `PORT` - Server port (default: 3000)
+
+### Command Line Arguments
+
+You can specify custom llama.cpp endpoints as command line arguments:
+
+**Single endpoint:**
+```bash
+npm run dev http://192.168.1.100:8080
+npm start http://your-llama-server:9090
+```
+
+**Multiple endpoints:**
+```bash
+npm run dev http://server1:9090 http://server2:8080 https://server3:443
+npm start http://127.0.0.1:9090 http://192.168.1.100:8080
+```
+
+**Custom port:**
+```bash
+PORT=8080 npm run dev
+PORT=4000 npm start
+```
+
+### Available Scripts
+
+- `npm run dev` - Start development server with auto-reload
+- `npm run build` - Build TypeScript to JavaScript 
+- `npm start` - Start production server from built files
 
 ## Features
 
@@ -48,10 +94,42 @@ npm run dev
 
 ## Usage
 
-1. Make sure your llama.cpp server is running on port 9090
-2. Start this application with `npm run dev`
-3. Navigate to `http://localhost:3000`
-4. Enter a prompt and click "Send Message"
-5. Watch the AI response stream in real-time
+### Basic Usage
 
-The interface will automatically handle connection states, errors, and completion events.
+1. Make sure your llama.cpp server is running (default: `http://127.0.0.1:9090`)
+2. Start the application:
+   ```bash
+   npm run dev
+   ```
+3. Navigate to `https://localhost:3000`
+4. Accept the self-signed SSL certificate when prompted
+5. Enter a prompt and click "Send Message"
+6. Watch the AI response stream in real-time
+
+### Advanced Usage
+
+**Using custom llama.cpp endpoints:**
+```bash
+# Single custom endpoint
+npm run dev http://192.168.1.100:8080
+
+# Multiple endpoints (first one is default)
+npm run dev http://127.0.0.1:9090 http://backup-server:8080
+```
+
+**Running on different port:**
+```bash
+PORT=8080 npm run dev
+```
+
+**Production deployment:**
+```bash
+npm run build
+PORT=80 npm start http://your-llama-server:9090
+```
+
+The interface will automatically:
+- Handle connection states and errors
+- Manage multiple endpoint failover
+- Stream responses in real-time
+- Generate SSL certificates for HTTPS
