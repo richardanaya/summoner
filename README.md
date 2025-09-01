@@ -1,4 +1,4 @@
-# HTMX AI Streamer
+# Summoner
 
 A real-time streaming interface for llama.cpp server using HTMX SSE extensions and Node.js with TypeScript.
 
